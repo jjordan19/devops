@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: A template to create a kubernetes cluster.
+Parameters:
+  SSHKeyName:
+    Type: "AWS::EC2::KeyPair::KeyName"
+Resources:
+  ControlPlaneEC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties: 
+      ImageId: !Ref AMIID
+      InstanceType: !Ref ControlPlaneInstanceType
+      KeyName: !Ref SSHKeyName
+      EbsOptimized: True
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            Encrypted: True
+            VolumeType: gp3
+            DeleteOnTermination: True
+            VolumeSize: !Ref ControlPlaneEBSSize
+    
+
+    
