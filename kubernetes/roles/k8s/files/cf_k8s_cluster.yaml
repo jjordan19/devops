@@ -30,6 +30,19 @@ Resources:
             Encrypted: True
             VolumeType: gp3
             DeleteOnTermination: True
-            VolumeSize: !Ref WorkerNodeEBSSize    
+            VolumeSize: !Ref WorkerNodeEBSSize 
+  WorkerNode2EC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties: 
+      ImageId: !Ref AMIID
+      InstanceType: !Ref WorkerNodeInstanceType
+      KeyName: !Ref SSHKeyName
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            Encrypted: True
+            VolumeType: gp3
+            DeleteOnTermination: True
+            VolumeSize: !Ref WorkerNodeEBSSize  
 
     
