@@ -1,0 +1,12 @@
+---
+version: 1
+
+aws:
+  region: us-east-2
+  AMIID: ami-088092b15533519a2 #RockyLinux x86
+  ControlPlaneEBSSize: 50
+  ControlPlaneInstanceType: t3.large
+  WorkerNodeEBSSize: 20
+  WorkerNodeInstanceType: t3.medium
+
+k8s:
