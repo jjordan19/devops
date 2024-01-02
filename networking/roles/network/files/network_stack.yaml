@@ -73,3 +73,124 @@ Resources:
       Tags:
       - Key: Name
         Value: MY-PrivateSubnet3-v1    
+  myPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: Name
+        Value: MY-PublicRT-v1
+  myPrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: Name
+        Value: MY-PrivateRT1-v1
+  myPrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: Name
+        Value: MY-PrivateRT2-v1
+  myPrivateRouteTable3:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: Name
+        Value: MY-PrivateRT3-v1
+  myInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: MY-IGW-v1
+  myAttachGateway:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref myVPC
+      InternetGatewayId: !Ref myInternetGateway
+  myIGWRoute:
+    Type: AWS::EC2::Route
+    Properties:
+       RouteTableId:
+         Ref: myPublicRouteTable
+       DestinationCidrBlock: 0.0.0.0/0
+       GatewayId:
+         Ref: myInternetGateway
+  myPubRTBLocalRoute:
+    Type: AWS::EC2::Route
+    Properties:
+       RouteTableId:
+         Ref: myPublicRouteTable
+       DestinationCidrBlock: 10.0.0.0/24
+       GatewayId: 'local'
+  myPriRTBLocalRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+       RouteTableId:
+         Ref: myPrivateRouteTable1
+       DestinationCidrBlock: 10.0.0.0/24
+       GatewayId: 'local'
+  myPriRTBLocalRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+       RouteTableId:
+         Ref: myPrivateRouteTable2
+       DestinationCidrBlock: 10.0.0.0/24
+       GatewayId: 'local'
+  myPriRTBLocalRoute3:
+    Type: AWS::EC2::Route
+    Properties:
+       RouteTableId:
+         Ref: myPrivateRouteTable3
+       DestinationCidrBlock: 10.0.0.0/24
+       GatewayId: 'local'
+  myPublicSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PublicSubnet1
+      RouteTableId:
+        Ref: myPublicRouteTable
+  myPublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PublicSubnet2
+      RouteTableId:
+        Ref: myPublicRouteTable
+  myPublicSubnetRouteTableAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PublicSubnet3
+      RouteTableId:
+        Ref: myPublicRouteTable
+  myPrivateSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PrivateSubnet1
+      RouteTableId:
+        Ref: myPrivateRouteTable1
+  myPrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PrivateSubnet2
+      RouteTableId:
+        Ref: myPrivateRouteTable2
+  myPrivateSubnetRouteTableAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PrivateSubnet3
+      RouteTableId:
+        Ref: myPrivateRouteTable3
