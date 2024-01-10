@@ -1,0 +1,12 @@
+#$ ansible-galaxy install -r requirements.yml
+---
+collections:
+  - name: amazon.aws
+    version: "7.0.0"
+    source: https://galaxy.ansible.com
+  - name: community.aws
+    version: "7.0.0"
+    source: https://galaxy.ansible.com
+  - name: kubernetes.core
+    version: "2.4.0"
+    source: https://galaxy.ansible.com
