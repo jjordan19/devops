@@ -1,4 +1,18 @@
 ---
-# tasks file for k8s
+- name: Add Google Kubernetes Yum Repo
+  yum_repository:
+    name: Kubernetes
+    description: kubernetes
+    baseurl: 'https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch'
+    enabled: True
+    gpgcheck: True
+    repo_gpgcheck: True
+    gpgkey: 'https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg'
 
-# task: Install Kubernetes
+- name: Install Kubernetes
+  yum:
+    name:
+      - kubeadm
+      - kubectl
+      - kubelet
+    state: latest

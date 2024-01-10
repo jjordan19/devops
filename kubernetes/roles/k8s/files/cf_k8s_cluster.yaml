@@ -1,15 +1,16 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: A template to create a kubernetes cluster.
-Parameters:
-  SSHKeyName:
-    Type: "AWS::EC2::KeyPair::KeyName"
 Resources:
+  NewSSHKeyPair:
+    Type: 'AWS::EC2::KeyPair'
+    Properties:
+      KeyName: MyKeyPair
   ControlPlaneEC2Instance:
     Type: "AWS::EC2::Instance"
     Properties: 
-      ImageId: !Ref AMIID
-      InstanceType: !Ref ControlPlaneInstanceType
-      KeyName: !Ref SSHKeyName
+      ImageId: ami-08f362c39d03a4eb5
+      InstanceType: t3.medium
+      KeyName: !Ref NewSSHKeyPair
       EbsOptimized: True
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
@@ -17,32 +18,32 @@ Resources:
             Encrypted: True
             VolumeType: gp3
             DeleteOnTermination: True
-            VolumeSize: !Ref ControlPlaneEBSSize
+            VolumeSize: 50
   WorkerNode1EC2Instance:
     Type: "AWS::EC2::Instance"
     Properties: 
-      ImageId: !Ref AMIID
-      InstanceType: !Ref WorkerNodeInstanceType
-      KeyName: !Ref SSHKeyName
+      ImageId: ami-08f362c39d03a4eb5
+      InstanceType: t3.small
+      KeyName: !Ref NewSSHKeyPair
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
             Encrypted: True
             VolumeType: gp3
             DeleteOnTermination: True
-            VolumeSize: !Ref WorkerNodeEBSSize 
+            VolumeSize: 50
   WorkerNode2EC2Instance:
     Type: "AWS::EC2::Instance"
     Properties: 
-      ImageId: !Ref AMIID
-      InstanceType: !Ref WorkerNodeInstanceType
-      KeyName: !Ref SSHKeyName
+      ImageId: ami-08f362c39d03a4eb5
+      InstanceType: t3.small
+      KeyName: !Ref NewSSHKeyPair
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
             Encrypted: True
             VolumeType: gp3
             DeleteOnTermination: True
-            VolumeSize: !Ref WorkerNodeEBSSize  
+            VolumeSize: 50 
 
     
