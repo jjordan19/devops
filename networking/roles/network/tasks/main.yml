@@ -1,2 +1,11 @@
 ---
 # tasks file for network
+- name: create a network stack
+  amazon.aws.cloudformation:
+    stack_name: "myNetworkStack"
+    state: "present"
+    region: "us-east-2"
+    disable_rollback: true
+    template: "roles/network/files/network_stack.yaml"
+    tags:
+      Stack: "ansible-cloudformation"
