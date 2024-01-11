@@ -1,4 +1,6 @@
-- name: Add Google Kubernetes Yum Repo
+#Reference: https://www.linuxtechi.com/how-to-install-kubernetes-cluster-rhel/
+
+- name: Add Kubernetes Repo
   yum_repository:
     name: Kubernetes
     description: kubernetes
@@ -12,6 +14,55 @@
   yum:
     name:
       - kubeadm
-      - kubectl
-      - kubelet
     state: latest
+
+- name: Shut off swap
+  shell: swapoff -a
+
+- name: Load kernel modules
+  lineinfile:
+    path: /etc/modules-load.d/k8s.conf
+    owner: root
+    group: root
+    mode: '640'
+    create: true
+    line: "{{ item.line}}"
+    regexp: "{{ item.regex}}"
+  with_items:
+    - { regexp: '^overlay', line: overlay}
+    - { regexp: '^br_netfilter', line: br_netfilter}
+
+- name: Add the overlay module
+  community.general.modprobe:
+    name: overlay
+    state: present
+
+- name: Add the br_netfilter module
+  community.general.modprobe:
+    name: br_netfilter
+    state: present
+
+- name: Set IP Forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+
+- name: Set Bridge NFTables
+  ansible.posix.sysctl:
+    name: net.bridge.bridge-nf-call-iptables
+    value: '1'
+    sysctl_set: true
+
+- name: Set Bridge NFTables IPv6
+  ansible.posix.sysctl:
+    name: net.bridge.bridge-nf-call-ip6tables
+    value: '1'
+    sysctl_set: true
+
+- name: Apply kernel parameters
+  shell: sysctl --system
+
+- name: Install Kubernetes Runtime
+  include_role:
+    name: kubernetes/roles/crio
