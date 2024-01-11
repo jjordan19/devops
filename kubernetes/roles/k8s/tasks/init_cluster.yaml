@@ -1,0 +1,22 @@
+- name: Reset Kubernetes component
+  shell: kubeadm reset --force
+  register: reset_cluster
+  when: isReset == True
+
+- name: Initialize Kubernetes Cluster
+  shell: "kubeadm init --pod-network-cidr={{ cluster.pod-network-cidr }}"
+  register: initCluster
+
+- name: Create Kubernetes config directory
+  file:
+    path: "~/.kube/"
+    state: directory
+
+- name: Copy admin.conf to K8S config directory
+  shell: cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+
+- name: Set permissions on K8s config directory
+  shell: chown $(id -u):$(id -g) $HOME/.kube/config
+
+- name: Deploy Calico CNI
+  shell: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/calico.yaml
