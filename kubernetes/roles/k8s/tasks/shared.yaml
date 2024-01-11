@@ -16,8 +16,16 @@
       - kubeadm
     state: latest
 
-- name: Shut off swap
+- name: Disable system swap for Kubernetes
   shell: swapoff -a
+
+- name: Remove current swaps from fstab permanently
+  lineinfile:
+    dest: /etc/fstab
+    regexp: '(?i)^([^#][\S]+\s+(none|swap)\s+swap.*)'
+    line: '# \1'
+    backrefs: yes
+    state: present
 
 - name: Load kernel modules
   lineinfile:
@@ -48,13 +56,13 @@
     value: '1'
     sysctl_set: true
 
-- name: Set Bridge NFTables
+- name: Pass bridged IPv4 traffic to iptable
   ansible.posix.sysctl:
     name: net.bridge.bridge-nf-call-iptables
     value: '1'
     sysctl_set: true
 
-- name: Set Bridge NFTables IPv6
+- name: Pass bridged IPv6 traffic to iptable
   ansible.posix.sysctl:
     name: net.bridge.bridge-nf-call-ip6tables
     value: '1'
@@ -66,3 +74,11 @@
 - name: Install Kubernetes Runtime
   include_role:
     name: kubernetes/roles/crio
+
+- name: Reload Kubelet
+  systemd:
+    name: kubelet
+    enabled: True
+    daemon_reload: True
+
+- reboot:
