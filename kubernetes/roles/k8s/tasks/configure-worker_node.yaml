@@ -1,0 +1,21 @@
+- name: Add Firewalld Rule
+  shell: firewall-cmd --permanent --add-port=10250/tcp --add-port=30000-32767/tcp
+
+- name: Reload Firewalld
+  shell: firewall-cmd --reload
+
+- name: Check if kubelet.conf exists
+  stat:
+    path: "/etc/kubernetes/kubelet.conf"
+  register: kubelet_conf
+
+- name: Join to cluster if needed
+  shell: JoinCluster.stdout
+  when: "{{ansible_host}} in node1" or "{{ ansible_host in node2}}" 
+
+- name: Enable and check kubelet service
+  systemd:
+    name: kubelet
+    daemon_reload: yes
+    state: started
+    enabled: yes
