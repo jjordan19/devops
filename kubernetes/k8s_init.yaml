@@ -1,12 +1,15 @@
 ---
 - hosts: 
   - localhost
+  - control_plane
+  - node1
+  - node2
   any_errors_fatal: True
   vars_files:
     - roles/k8s/vars/k8s_cluster_vars.yml
   vars:
     - isReset: False #To Reset the cluster turn this to true
-    - awsStack: False # To create AWS stacks
+    - awsStack: False # To create AWS stack
   tasks:
     - ansible.builtin.include_role:
         name: k8s
