@@ -9,6 +9,7 @@
     - region: us-east-1
     - isReset: False #To Reset the cluster turn this to true
     - awsStack: False # To create AWS stack
+  become: True
   tasks:
     - ansible.builtin.include_role:
         name: k8s

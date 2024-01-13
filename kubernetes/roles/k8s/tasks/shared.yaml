@@ -36,7 +36,7 @@
     mode: '640'
     create: true
     line: "{{ item.line}}"
-    regexp: "{{ item.regex}}"
+    regexp: "{{ item.regexp }}"
   with_items:
     - { regexp: '^overlay', line: overlay}
     - { regexp: '^br_netfilter', line: br_netfilter}
