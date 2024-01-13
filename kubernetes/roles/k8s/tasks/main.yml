@@ -1,18 +1,12 @@
 ---
-- name: Add Google Kubernetes Yum Repo
-  yum_repository:
-    name: Kubernetes
-    description: kubernetes
-    baseurl: 'https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch'
-    enabled: True
-    gpgcheck: True
-    repo_gpgcheck: True
-    gpgkey: 'https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg'
+- include_tasks: cluster_infra.yaml
+  when: awsStack == True
 
-- name: Install Kubernetes
-  yum:
-    name:
-      - kubeadm
-      - kubectl
-      - kubelet
-    state: latest
+- include_tasks: shared.yaml
+  when: awsStack == False
+
+- include_tasks: configure-control_plane.yaml
+  when: awsStack == False
+
+- include_tasks: configure-worker_node.yaml
+  when: awsStack == False

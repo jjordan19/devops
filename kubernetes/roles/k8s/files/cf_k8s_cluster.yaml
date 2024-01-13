@@ -1,49 +1,1507 @@
-AWSTemplateFormatVersion: "2010-09-09"
-Description: A template to create a kubernetes cluster.
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  ControlPlaneInstanceType:
+    Type: String
+    Default: "t3.medium"
+    Description: Enter select an instance size for the Kubernetes ControlPlane instances.
+  ControlPlaneEBSSize:
+    Type: Number
+    Default: 15
+    ConstraintDescription: '[0-9]+'
+    Description: Please enter a volume size in GB.
+  NodeInstanceType:
+    Type: String
+    Default: "t3.small"
+    Description: Enter select an instance size for the Kubernetes node instances.
+  NodeMaxScale:
+    Type: String
+    Default: 2
+    ConstraintDescription: '^/d*[13579]$'
+    Description: Please select an odd number of maximum Kubernetes node hosts to deploy.
+  NodeMinScale:
+    Type: String
+    Default: 1
+    ConstraintDescription: '^/d*[13579]$'
+    Description: Please select an odd number of minimum Kubernetes node hosts to deploy.
+  NodeEBSSize:
+    Type: Number
+    Default: 10
+    ConstraintDescription: '[0-9]+'
+    Description: Please enter a volume size in GB.
+  myAMI:
+    Type: String
+    Default: "ami-08f362c39d03a4eb5"
+    Description: Please enter a valid AMI ID for this region.
+  Project:
+    Type: String
+    Default: "Test"
+    Description: Enter Project Name.
+  envTag:
+    Type: String
+    Default: "dev"
+    Description: Please enter an environment name.
+  Release:
+    Type: String
+    Default: 1
+    Description: Please enter the Release number.
+  BastionInstanceType:
+    Type: String
+    Default: "t3.small"
+    Description: Enter select an instance size for the bastion instances.
+  BastionEBSSize:
+    Type: Number
+    Default: 20
+    ConstraintDescription: '[0-9]+'
+    Description: Please enter a volume size in GB.
+  BastionMaxScale:
+    Type: String
+    Default: 1
+    ConstraintDescription: '^/d*[13579]$'
+    Description: Please select an odd number of maximum bastion hosts to deploy.
+  BastionMinScale:
+    Type: String
+    Default: 1
+    ConstraintDescription: '^/d*[13579]$'
+    Description: Please select an odd number of minimum bastion hosts to deploy.
+  BastionWhitelist:
+    Type: String
+    Default: 0.0.0.0/0
+  myVPCCIDRBlock:
+    Type: String
+    Default: "10.236.0.0/22"
+  myPrivateSubnet1CidrBlock:
+    Type: String
+    Default: "10.236.0.0/25"
+  myPrivateSubnet2CidrBlock:
+    Type: String
+    Default: "10.236.0.128/25"
+  myPrivateSubnet3CidrBlock:
+    Type: String
+    Default: "10.236.1.0/25"
+  myPublicSubnet1CidrBlock:
+    Type: String
+    Default: "10.236.1.128/25"
+  myPublicSubnet2CidrBlock:
+    Type: String
+    Default: "10.236.2.0/25"
+  myPublicSubnet3CidrBlock:
+    Type: String
+    Default: "10.236.2.128/25"
+  myBastionSubnet1CidrBlock:
+    Type: String
+    Default: "10.236.3.0/25"
+  myBastionSubnet2CidrBlock:
+    Type: String
+    Default: "10.236.3.128/25"
+Mappings:
+  RegionMap:
+    us-east-1:
+      AZ1: a
+      AZ2: c
+      AZ3: f
+    us-east-2:
+      AZ1: b
+      AZ2: c
+      AZ3: a
 Resources:
   NewSSHKeyPair:
     Type: 'AWS::EC2::KeyPair'
     Properties:
-      KeyName: MyKeyPair
-  ControlPlaneEC2Instance:
-    Type: "AWS::EC2::Instance"
-    Properties: 
-      ImageId: ami-08f362c39d03a4eb5
-      InstanceType: t3.medium
+      KeyName: !Sub 
+        - '${Project}-K8SClusterSSHKey-${envTag}-v${Release}'
+        - envTag: !Ref envTag
+  KubernetesControlPlaneSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: !Sub 
+        - '${Project}-Kubernetes-ControlPlane-${envTag}-v${Release}'
+        - envTag: !Ref envTag
+      SecurityGroupIngress:
+        - CidrIp: !Ref BastionWhitelist
+          Description: HTTPS
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: HTTPS
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+        - CidrIp: 0.0.0.0/0
+          Description: HTTP
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+      GroupDescription: Assign to hosts connecting to Kubernetes.
+      VpcId: !Ref vpc
+  KubernetesNodeSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: !Sub 
+        - '${Project}-Kubernetes-Node-${envTag}-v${Release}'
+        - envTag: !Ref envTag
+      SecurityGroupEgress:
+        - Description: HTTPS
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - Description: HTTP
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - Description: HTTPS
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIpv6: '::/0'
+        - Description: HTTP
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIpv6: '::/0'
+      GroupDescription: Assign to hosts connecting to Kubernetes.
+      VpcId: !Ref vpc
+  KubernetesControlPlaneALLtoIngress:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      Description: Kubernetes ALL Traffic
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      DestinationSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesControlPlaneALLtoNodeIngress:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      Description: Kubernetes ALL Traffic
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      DestinationSecurityGroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesControlPlaneETCDOutboundRule:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      Description: etcd server client API
+      IpProtocol: tcp
+      FromPort: 2379
+      ToPort: 2380
+      DestinationSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesControlPlaneKubeLetOutboundRule:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      Description: Kubelet API
+      IpProtocol: tcp
+      FromPort: 10250
+      ToPort: 10250
+      DestinationSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesControlPlaneKubeSchedulerOutboundRule:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      Description: kube-scheduler
+      IpProtocol: tcp
+      FromPort: 10251
+      ToPort: 10251
+      DestinationSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesControlPlaneControllerManagerOutboundRule:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      Description: kube-scheduler
+      IpProtocol: tcp
+      FromPort: 10252
+      ToPort: 10252
+      DestinationSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesNodeKubeLetOutboundRule:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      Description: Kubelet API
+      IpProtocol: tcp
+      FromPort: 10250
+      ToPort: 10250
+      DestinationSecurityGroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+  KubernetesNodeKubeALLNodetoControlPlaneEgressRule:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      Description: Kubernetes ALL Traffic
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      DestinationSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+  KubernetesNodeALLNodetoNodeEgressRule:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      Description: Kubernetes ALL Traffic
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      DestinationSecurityGroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+  KubernetesNodeALLInboundRule:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: Kubernetes ALL Traffic
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      SourceSecurityGroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+  KubernetesNodeALLfromControlPlaneInboundRule:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: Kubernetes ALL Traffic
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      SourceSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+  KubernetesControlPlaneETCDInboundRule:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: etcd server client API
+      IpProtocol: tcp
+      FromPort: 2379
+      ToPort: 2380
+      SourceSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesControlPlaneKubeLetInboundRule:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: Kubelet API
+      IpProtocol: tcp
+      FromPort: 10250
+      ToPort: 10250
+      SourceSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesControlPlaneKubeSchedulerInboundRule:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: kube-scheduler
+      IpProtocol: tcp
+      FromPort: 10251
+      ToPort: 10251
+      SourceSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesControlPlaneControllerManagerInboundRule:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: kube-scheduler
+      IpProtocol: tcp
+      FromPort: 10252
+      ToPort: 10252
+      SourceSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesNodeKubeLetInboundRule:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: Kubelet API
+      IpProtocol: tcp
+      FromPort: 10250
+      ToPort: 10250
+      SourceSecurityGroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+  KubernetesNodeBindToControlPlaneKubeLetOutboundRule:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      Description: Kubelet API
+      IpProtocol: tcp
+      FromPort: 10250
+      ToPort: 10250
+      DestinationSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+  KubernetesNodeBindToControlPlaneKubeLetInboundRule:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: Kubelet API
+      IpProtocol: tcp
+      FromPort: 10250
+      ToPort: 10250
+      SourceSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+  KubernetesControlPlaneBindToNodeKubeLetOutboundRule:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      Description: Kubelet API
+      IpProtocol: tcp
+      FromPort: 10250
+      ToPort: 10250
+      DestinationSecurityGroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesControlPlaneBindToNodeKubeLetInboundRule:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: Kubelet API
+      IpProtocol: tcp
+      FromPort: 10250
+      ToPort: 10250
+      SourceSecurityGroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesALLOutboundFromEgress:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: Kubernetes ALL Traffic
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      SourceSecurityGroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  KubernetesALLOutboundFromNodeEgress:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: Kubernetes ALL Traffic
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      SourceSecurityGroupId: !GetAtt 
+        - KubernetesNodeSG
+        - GroupId
+      GroupId: !GetAtt 
+        - KubernetesControlPlaneSG
+        - GroupId
+  EC2K8SControlPlane:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      IamInstanceProfile: !Ref K8SRoleInstanceProfile
+      SecurityGroupIds:
+        - !Ref KubernetesControlPlaneSG
+      EbsOptimized: true
       KeyName: !Ref NewSSHKeyPair
-      EbsOptimized: True
+      ImageId: !Ref myAMI
+      InstanceType: !Ref ControlPlaneInstanceType
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
-            Encrypted: True
+            Encrypted: true
+            DeleteOnTermination: true
             VolumeType: gp3
-            DeleteOnTermination: True
-            VolumeSize: 50
-  WorkerNode1EC2Instance:
-    Type: "AWS::EC2::Instance"
-    Properties: 
-      ImageId: ami-08f362c39d03a4eb5
-      InstanceType: t3.small
-      KeyName: !Ref NewSSHKeyPair
-      BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-            Encrypted: True
-            VolumeType: gp3
-            DeleteOnTermination: True
-            VolumeSize: 50
-  WorkerNode2EC2Instance:
-    Type: "AWS::EC2::Instance"
-    Properties: 
-      ImageId: ami-08f362c39d03a4eb5
-      InstanceType: t3.small
-      KeyName: !Ref NewSSHKeyPair
-      BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-            Encrypted: True
-            VolumeType: gp3
-            DeleteOnTermination: True
-            VolumeSize: 50 
-
-    
+            VolumeSize: !Ref ControlPlaneEBSSize
+      UserData: ""
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-K8S-ControlPlane-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+        - Key: Program
+          Value: Kubernetes
+        - Key: Role
+          Value: ControlPlane
+        - Key: GPUEnabled
+          Value: 'false'
+      SubnetId: !Ref PublicSubnet1
+    DependsOn:
+      - K8SRoleInstanceProfile
+      - K8SRole
+  LTK8SNode:
+    Type: 'AWS::EC2::LaunchTemplate'
+    Properties:
+      LaunchTemplateName: !Sub 
+        - '${Project}-K8S-Node-${envTag}-v${Release}'
+        - envTag: !Ref envTag
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Name: !Ref K8SRoleInstanceProfile
+        SecurityGroupIds:
+          - !Ref KubernetesNodeSG
+        EbsOptimized: true
+        KeyName: !Ref NewSSHKeyPair
+        ImageId: !Ref myAMI
+        InstanceType: !Ref NodeInstanceType
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              Encrypted: true
+              DeleteOnTermination: true
+              VolumeType: gp3
+              VolumeSize: !Ref NodeEBSSize
+        UserData: ""
+    DependsOn:
+      - K8SRoleInstanceProfile
+      - K8SRole
+  ASGK8SNode:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub:
+              - ${Project}-K8S-Node-${envTag}-v${Release}
+              - envTag:
+                  Ref: envTag
+          PropagateAtLaunch: true
+        - Key: Project
+          Value:
+            Ref: Project
+          PropagateAtLaunch: true
+        - Key: Program
+          Value: Kubernetes
+          PropagateAtLaunch: true
+        - Key: Role
+          Value: Node
+          PropagateAtLaunch: true
+      VPCZoneIdentifier:
+        - Ref: PrivateSubnet1
+        - Ref: PrivateSubnet2
+        - Ref: PrivateSubnet3
+      # TargetGroupARNs:
+      #   - Ref: ELBTargetGroup
+      MixedInstancesPolicy:
+        LaunchTemplate:
+          LaunchTemplateSpecification:
+            LaunchTemplateId:
+              Ref: LTK8SNode
+            Version: '1'
+        InstancesDistribution:
+          SpotAllocationStrategy: capacity-optimized
+          OnDemandBaseCapacity: 2
+      MaxSize:
+        Ref: NodeMaxScale
+      MinSize:
+        Ref: NodeMinScale
+  K8SRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: !Sub 
+            - '${Project}-K8SRole-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 'ecr:GetAuthorizationToken'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:GetRepositoryPolicy'
+                  - 'ecr:DescribeRepositories'
+                  - 'ecr:ListImages'
+                  - 'ecr:BatchGetImage'
+                Resource: '*'
+  K8SRoleInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref K8SRole
+  vpc:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref myVPCCIDRBlock
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-vpc-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+  IG:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-IG-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+  AttachGateway:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref vpc
+      InternetGatewayId: !Ref IG
+  BastionACL:
+    Type: 'AWS::EC2::NetworkAcl'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-BastionACL-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+      VpcId: !Ref vpc
+  BastionIngressNetworkAclEntrySSH:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref BastionACL
+      RuleNumber: '100'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: !Ref BastionWhitelist
+      Icmp:
+        Code: '-1'
+        Type: '-1'
+      PortRange:
+        From: '22'
+        To: '22'
+  BastionIngressNetworkAclEntryIPv4Range:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref BastionACL
+      RuleNumber: '200'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      Icmp:
+        Code: '-1'
+        Type: '-1'
+      PortRange:
+        From: '1024'
+        To: '65535'
+  BastionEgressNetworkAclEntryNTP:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref BastionACL
+      RuleNumber: 155
+      Protocol: 17
+      RuleAction: allow
+      Egress: true
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 123
+        To: 123
+  BastionIngressNetworkUDPAclEntryIPv4Range:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref BastionACL
+      RuleNumber: '201'
+      Protocol: '17'
+      RuleAction: allow
+      Egress: 'false'
+      CidrBlock: 0.0.0.0/0
+      Icmp:
+        Code: '-1'
+        Type: '-1'
+      PortRange:
+        From: '1024'
+        To: '65535'
+  BastionEgressVPCNetworkAclEntrySSH:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref BastionACL
+      RuleNumber: '100'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: !Ref myVPCCIDRBlock
+      Icmp:
+        Code: '-1'
+        Type: '-1'
+      PortRange:
+        From: '22'
+        To: '22'
+  BastionEgressVPCNetworkAclEntryHTTP:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref BastionACL
+      RuleNumber: '120'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      Icmp:
+        Code: '-1'
+        Type: '-1'
+      PortRange:
+        From: '80'
+        To: '80'
+  BastionEgressVPCNetworkAclEntryHTTPS:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref BastionACL
+      RuleNumber: '130'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      Icmp:
+        Code: '-1'
+        Type: '-1'
+      PortRange:
+        From: '443'
+        To: '443'
+  BastionEgressVPCNetworkAclEntryRsyslog:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref BastionACL
+      RuleNumber: '140'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: !Ref myVPCCIDRBlock
+      Icmp:
+        Code: '-1'
+        Type: '-1'
+      PortRange:
+        From: '514'
+        To: '514'
+  BastionEgressNetworkAclEntryIPv4Range:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref BastionACL
+      RuleNumber: '150'
+      Protocol: '6'
+      RuleAction: allow
+      Egress: 'true'
+      CidrBlock: 0.0.0.0/0
+      Icmp:
+        Code: '-1'
+        Type: '-1'
+      PortRange:
+        From: '1024'
+        To: '65535'
+  # BastionEgressNetworkAclEntryDNS:
+  #   Type: 'AWS::EC2::NetworkAclEntry'
+  #   Properties:
+  #     NetworkAclId: !Ref BastionACL
+  #     RuleNumber: '160'
+  #     Protocol: '17'
+  #     RuleAction: allow
+  #     Egress: 'true'
+  #     CidrBlock: !Join 
+  #       - ''
+  #       - - !GetAtt 
+  #           - EC2DNSServer
+  #           - PrivateIp
+  #         - /32
+  #     Icmp:
+  #       Code: '-1'
+  #       Type: '-1'
+  #     PortRange:
+  #       From: '53'
+  #       To: '53'
+  # BastionEgressNetworkAclEntryDNSTCP:
+  #   Type: 'AWS::EC2::NetworkAclEntry'
+  #   Properties:
+  #     NetworkAclId: !Ref BastionACL
+  #     RuleNumber: '170'
+  #     Protocol: '6'
+  #     RuleAction: allow
+  #     Egress: 'true'
+  #     CidrBlock: !Join 
+  #       - ''
+  #       - - !GetAtt 
+  #           - EC2DNSServer
+  #           - PrivateIp
+  #         - /32
+  #     Icmp:
+  #       Code: '-1'
+  #       Type: '-1'
+  #     PortRange:
+  #       From: '53'
+  #       To: '53'
+  Bastion1ACLA:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref BastionACL
+      SubnetId: !Ref BastionNet1
+  Bastion2ACLA:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref BastionACL
+      SubnetId: !Ref BastionNet2
+  BastionNet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: !Ref myBastionSubnet1CidrBlock
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Sub 
+        - '${AWS::Region}${zone}'
+        - zone: !FindInMap 
+            - RegionMap
+            - !Ref 'AWS::Region'
+            - AZ1
+      VpcId: !Ref vpc
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-bastion1-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+  BastionNet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: !Ref myBastionSubnet2CidrBlock
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Sub 
+        - '${AWS::Region}${zone}'
+        - zone: !FindInMap 
+            - RegionMap
+            - !Ref 'AWS::Region'
+            - AZ2
+      VpcId: !Ref vpc
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-bastion2-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+  Bastion1RTA:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref MainPublicRT
+      SubnetId: !Ref BastionNet1
+  Bastion2RTA:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref MainPublicRT
+      SubnetId: !Ref BastionNet2
+  BastionSGRule:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      SecurityGroupIngress:
+        - Description: SSH
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref BastionWhitelist
+      GroupName: !Sub 
+        - '${Project}-Bastion-${envTag}-v${Release}'
+        - envTag: !Ref envTag
+      GroupDescription: >-
+        Assign ONLY to bastion protected information systems operating with the
+        baseline configuration.
+      SecurityGroupEgress:
+        - Description: DNS
+          IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: !GetAtt 
+            - vpc
+            - CidrBlock
+        - Description: DNS
+          IpProtocol: tcp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: !GetAtt 
+            - vpc
+            - CidrBlock
+        - Description: SSH
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !GetAtt 
+            - vpc
+            - CidrBlock
+      VpcId: !Ref vpc
+  LTBastion:
+    Type: 'AWS::EC2::LaunchTemplate'
+    Properties:
+      LaunchTemplateName: !Sub 
+        - '${Project}-Bastion-${envTag}-v${Release}'
+        - envTag: !Ref envTag
+      LaunchTemplateData:
+        SecurityGroupIds:
+          - !Ref BastionSGRule
+        EbsOptimized: true
+        KeyName: !Ref NewSSHKeyPair
+        ImageId: !Ref myAMI
+        InstanceType: !Ref BastionInstanceType
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              Encrypted: true
+              DeleteOnTermination: true
+              VolumeType: gp3
+              VolumeSize: !Ref BastionEBSSize
+  ASGBastion:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-Bastion-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+          PropagateAtLaunch: true
+        - Key: Project
+          Value: !Ref Project
+          PropagateAtLaunch: true
+        - Key: Program
+          Value: Bastion
+          PropagateAtLaunch: true
+      VPCZoneIdentifier:
+        - !Ref BastionNet1
+        - !Ref BastionNet2
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LTBastion
+        Version: '1'
+      MaxSize: !Ref BastionMaxScale
+      MinSize: !Ref BastionMinScale
+  PrivateSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: !Ref myPrivateSubnet1CidrBlock
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Sub 
+        - '${AWS::Region}${zone}'
+        - zone: !FindInMap 
+            - RegionMap
+            - !Ref 'AWS::Region'
+            - AZ1
+      VpcId: !Ref vpc
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-private1-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+  PrivateSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: !Ref myPrivateSubnet2CidrBlock
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Sub 
+        - '${AWS::Region}${zone}'
+        - zone: !FindInMap 
+            - RegionMap
+            - !Ref 'AWS::Region'
+            - AZ2
+      VpcId: !Ref vpc
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-private2-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+  PrivateSubnet3:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: !Ref myPrivateSubnet3CidrBlock
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Sub 
+        - '${AWS::Region}${zone}'
+        - zone: !FindInMap 
+            - RegionMap
+            - !Ref 'AWS::Region'
+            - AZ3
+      VpcId: !Ref vpc
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-private3-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+  PublicSubnetRTA1:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref MainPublicRT
+  PublicSubnetRTA2:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref MainPublicRT
+  PublicSubnetRTA3:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet3
+      RouteTableId: !Ref MainPublicRT
+  EC2SRTA1ZLBZ:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PrivateRT1
+      SubnetId: !Ref PrivateSubnet1
+  EC2SRTAYLCP:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PrivateRT2
+      SubnetId: !Ref PrivateSubnet2
+  EC2SRTA2CI4F:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PrivateRT3
+      SubnetId: !Ref PrivateSubnet3
+  PublicSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref vpc
+      CidrBlock: !Ref myPublicSubnet1CidrBlock
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Sub 
+        - '${AWS::Region}${zone}'
+        - zone: !FindInMap 
+            - RegionMap
+            - !Ref 'AWS::Region'
+            - AZ1
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-public1-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+  PublicSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref vpc
+      CidrBlock: !Ref myPublicSubnet2CidrBlock
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Sub 
+        - '${AWS::Region}${zone}'
+        - zone: !FindInMap 
+            - RegionMap
+            - !Ref 'AWS::Region'
+            - AZ2
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-public2-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+  PublicSubnet3:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref vpc
+      CidrBlock: !Ref myPublicSubnet3CidrBlock
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Sub 
+        - '${AWS::Region}${zone}'
+        - zone: !FindInMap 
+            - RegionMap
+            - !Ref 'AWS::Region'
+            - AZ3
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-public3-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+  Public1ACL:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      SubnetId: !Ref PublicSubnet1
+  Public2ACL:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      SubnetId: !Ref PublicSubnet2
+  Public3ACL:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      SubnetId: !Ref PublicSubnet3
+  Private1ACL:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      SubnetId: !Ref PrivateSubnet1
+  Private2ACL:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      SubnetId: !Ref PrivateSubnet2
+  Private3ACL:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      SubnetId: !Ref PrivateSubnet3
+  myNetworkAcl:
+    Type: 'AWS::EC2::NetworkAcl'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-NetworkAcl-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+      VpcId: !Ref vpc
+  MainPublicRT:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-MainPublicRT-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+      VpcId: !Ref vpc
+  MainPublicRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref MainPublicRT
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref IG
+  PrivateRT1:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-PrivateRT1-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+      VpcId: !Ref vpc
+  PrivateRT2:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-PrivateRT2-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+      VpcId: !Ref vpc
+  PrivateRT3:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub 
+            - '${Project}-PrivateRT3-${envTag}-v${Release}'
+            - envTag: !Ref envTag
+        - Key: Project
+          Value: !Ref Project
+      VpcId: !Ref vpc
+  EgressNetworkAclEntryALL:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 100
+      Protocol: -1
+      RuleAction: allow
+      Egress: true
+      CidrBlock: !Ref myVPCCIDRBlock
+  EgressNetworkAclEntryHTTPS:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 110
+      Protocol: 6
+      RuleAction: allow
+      Egress: true
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 443
+        To: 443
+  EgressNetworkAclEntryHTTP:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 120
+      Protocol: 6
+      RuleAction: allow
+      Egress: true
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 80
+        To: 80
+  EgressNetworkAclEntryNTP:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 130
+      Protocol: 17
+      RuleAction: allow
+      Egress: true
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 123
+        To: 123
+  EgressNetworkAclEntrySMTP:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 140
+      Protocol: 6
+      RuleAction: allow
+      Egress: true
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 587
+        To: 587
+  EgressNetworkAclEntryIPv4Range:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 160
+      Protocol: 6
+      RuleAction: allow
+      Egress: true
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 1024
+        To: 65535
+  EgressNetworkAclEntryDNS:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 170
+      Protocol: 17
+      RuleAction: allow
+      Egress: true
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 53
+        To: 53
+  EgressNetworkAclEntryDNSTCP:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 180
+      Protocol: 6
+      RuleAction: allow
+      Egress: true
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 53
+        To: 53
+  EgressNetworkAclEntryHTTPSIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 200
+      Protocol: 6
+      RuleAction: allow
+      Egress: true
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 443
+        To: 443
+  EgressNetworkAclEntryHTTPIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 210
+      Protocol: 6
+      RuleAction: allow
+      Egress: true
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 80
+        To: 80
+  EgressNetworkAclEntryNTPIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 220
+      Protocol: 17
+      RuleAction: allow
+      Egress: true
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 123
+        To: 123
+  EgressNetworkAclEntrySMTPIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 230
+      Protocol: 6
+      RuleAction: allow
+      Egress: true
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 587
+        To: 587
+  EgressNetworkAclEntryIPv4RangeIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 240
+      Protocol: 6
+      RuleAction: allow
+      Egress: true
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 1024
+        To: 65535
+  EgressNetworkAclEntryDNSIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 250
+      Protocol: 17
+      RuleAction: allow
+      Egress: true
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 53
+        To: 53
+  EgressNetworkAclEntryDNSTCPIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 260
+      Protocol: 6
+      RuleAction: allow
+      Egress: true
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 53
+        To: 53
+  IngressNetworkAclEntryVPCALL:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 100
+      Protocol: -1
+      RuleAction: allow
+      Egress: false
+      CidrBlock: !Ref myVPCCIDRBlock
+  IngressNetworkAclEntryHTTPS:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 120
+      Protocol: -1
+      RuleAction: allow
+      Egress: false
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 443
+        To: 443
+  IngressNetworkAclEntryHTTP:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 130
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 80
+        To: 80
+  IngressNetworkAclEntryTCP:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 140
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 1024
+        To: 65535
+  IngressNetworkAclEntryUDP:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 160
+      Protocol: 17
+      RuleAction: allow
+      Egress: false
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 1024
+        To: 65535
+  IngressNetworkAclEntryDNS:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 170
+      Protocol: 17
+      RuleAction: allow
+      Egress: false
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 53
+        To: 53
+  IngressNetworkAclEntryDNSTCP:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 180
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: 0.0.0.0/0
+      PortRange:
+        From: 53
+        To: 53
+  IngressNetworkAclEntryHTTPSIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 190
+      Protocol: -1
+      RuleAction: allow
+      Egress: false
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 443
+        To: 443
+  IngressNetworkAclEntryHTTPIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 200
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 80
+        To: 80
+  IngressNetworkAclEntryTCPIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 210
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 1024
+        To: 65535
+  IngressNetworkAclEntryUDPIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 220
+      Protocol: 17
+      RuleAction: allow
+      Egress: false
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 1024
+        To: 65535
+  IngressNetworkAclEntryDNSIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 230
+      Protocol: 17
+      RuleAction: allow
+      Egress: false
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 53
+        To: 53
+  IngressNetworkAclEntryDNSTCPIPv6:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      NetworkAclId: !Ref myNetworkAcl
+      RuleNumber: 240
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      Ipv6CidrBlock: '::/0'
+      PortRange:
+        From: 53
+        To: 53

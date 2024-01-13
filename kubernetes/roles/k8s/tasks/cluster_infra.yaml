@@ -1,0 +1,34 @@
+---
+- name: create a Kubernetes Cluster stack
+  amazon.aws.cloudformation:
+    stack_name: "myK8SClusterStack"
+    state: "present"
+    region: "us-east-1"
+    disable_rollback: true
+    template: "roles/k8s/files/cf_k8s_cluster.yaml"
+    template_parameters:
+      ControlPlaneInstanceType: "{{ ControlPlaneInstanceType }}"
+      ControlPlaneEBSSize: "{{ ControlPlaneEBSSize }}"
+      NodeInstanceType: "{{ NodeInstanceType }}"
+      NodeMaxScale: "{{ NodeMaxScale }}"
+      NodeMinScale: "{{ NodeMinScale }}"
+      NodeEBSSize: "{{ NodeEBSSize }}"
+      myAMI: "{{ myAMI }}"
+      Project: "{{ Project }}"
+      envTag: "{{ envTag }}"
+      Release: "{{ Release }}"
+      BastionInstanceType: "{{ BastionInstanceType }}"
+      BastionWhitelist: "{{ BastionWhitelist }}"
+      myVPCCIDRBlock: "{{ myVPCCIDRBlock }}"
+      myPrivateSubnet1CidrBlock: "{{ myPrivateSubnet1CidrBlock }}" 
+      myPrivateSubnet2CidrBlock: "{{ myPrivateSubnet2CidrBlock }}"
+      myPrivateSubnet3CidrBlock: "{{ myPrivateSubnet3CidrBlock }}"
+      myPublicSubnet1CidrBlock: "{{ myPublicSubnet1CidrBlock }}"
+      myPublicSubnet2CidrBlock: "{{ myPublicSubnet2CidrBlock }}"
+      myPublicSubnet3CidrBlock: "{{ myPublicSubnet3CidrBlock }}"
+      myBastionSubnet1CidrBlock: "{{ myBastionSubnet1CidrBlock }}"
+      myBastionSubnet2CidrBlock: "{{ myBastionSubnet2CidrBlock }}"
+    tags:
+      Stack: "ansible-cloudformation"
+
+# TODO - Get Dynamic Inventory

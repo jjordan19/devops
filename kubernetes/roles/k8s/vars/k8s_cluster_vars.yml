@@ -1,12 +1,26 @@
 ---
-version: 1
+ControlPlaneInstanceType: "t3.medium"
+ControlPlaneEBSSize: 20
+NodeInstanceType: "t3.small"
+NodeMaxScale: 2
+NodeMinScale: 1
+NodeEBSSize: 10
+myAMI: "ami-08f362c39d03a4eb5"
+Project: "Test"
+envTag: "dev"
+Release: 1
+BastionInstanceType: "t3.small"
+BastionWhitelist: 0.0.0.0/0 # This should NOT be public.
+myVPCCIDRBlock: 10.236.0.0/22
+myPrivateSubnet1CidrBlock: 10.236.0.0/25
+myPrivateSubnet2CidrBlock: 10.236.0.128/25
+myPrivateSubnet3CidrBlock: 10.236.1.0/25
+myPublicSubnet1CidrBlock: 10.236.1.128/25
+myPublicSubnet2CidrBlock: 10.236.2.0/25
+myPublicSubnet3CidrBlock: 10.236.2.128/25
+myBastionSubnet1CidrBlock: 10.236.3.0/25
+myBastionSubnet2CidrBlock: 10.236.3.128/25
 
-aws:
-  region: us-east-2
-  AMIID: ami-088092b15533519a2 #RockyLinux x86
-  ControlPlaneEBSSize: 50
-  ControlPlaneInstanceType: t3.large
-  WorkerNodeEBSSize: 20
-  WorkerNodeInstanceType: t3.medium
-
-k8s:
+cluster:
+  pod-network-cidr: 192.168.10.0/16
+  
