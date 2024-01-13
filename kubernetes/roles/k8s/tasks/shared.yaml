@@ -9,6 +9,7 @@
     gpgcheck: True
     repo_gpgcheck: True
     gpgkey: 'https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg'
+  become: True
 
 - name: Install Kubernetes
   yum:
