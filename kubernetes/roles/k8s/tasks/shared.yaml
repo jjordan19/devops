@@ -74,7 +74,7 @@
 
 - name: Install Kubernetes Runtime
   include_role:
-    name: kubernetes/roles/crio
+    name: roles/crio
 
 - name: Reload Kubelet
   systemd:
