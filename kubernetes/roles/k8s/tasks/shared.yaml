@@ -1,5 +1,3 @@
-#Reference: https://www.linuxtechi.com/how-to-install-kubernetes-cluster-rhel/
-
 - name: Add Kubernetes Repo
   yum_repository:
     name: kubernetes
