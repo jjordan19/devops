@@ -13,7 +13,7 @@
   when: inventory_hostname in groups["control_plane"]
 
 - include_tasks: init_cluster.yaml
-  when: kubeadm_conf.stat.exists == False
+  when: kubelet_conf.stat.exists == False
 
 - name: Restart kubelet
   service:
