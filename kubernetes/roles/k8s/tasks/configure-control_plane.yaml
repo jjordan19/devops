@@ -1,23 +1,23 @@
 - name: Add Firewalld Rule
   shell: firewall-cmd --permanent --add-port=6443/tcp --add-port=2379-2380/tcp --add-port=10250/tcp --add-port=10251/tcp --add-port=10252/tcp
-  when: hostvars[inventory_hostname].ansible_host in groups["control_plane"]
+  when: inventory_hostname in groups["control_plane"]
 
 - name: Reload Firewalld
   shell: firewall-cmd --reload
-  when: hostvars[inventory_hostname].ansible_host in groups["control_plane"]
+  when: inventory_hostname in groups["control_plane"]
 
 - name: Check if kubelet.conf exists
   stat:
     path: "/etc/kubernetes/kubelet.conf"
   register: kubelet_conf
-  when: hostvars[inventory_hostname].ansible_host in groups["control_plane"]
+  when: inventory_hostname in groups["control_plane"]
 
 - include_tasks: init_cluster.yaml
-  when: kubeadm_conf.stat.exists == False and hostvars[inventory_hostname].ansible_host in groups["control_plane"]
+  when: kubeadm_conf.stat.exists == False and inventory_hostname in groups["control_plane"]
 
 - name: Restart kubelet
   service:
     name: kubelet
     state: restarted
-  when: hostvars[inventory_hostname].ansible_host in groups["control_plane"]
+  when: inventory_hostname in groups["control_plane"]
 
