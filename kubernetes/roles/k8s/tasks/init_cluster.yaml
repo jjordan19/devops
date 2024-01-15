@@ -1,22 +1,27 @@
 - name: Reset Kubernetes component
   shell: kubeadm reset --force
   register: reset_cluster
-  when: isReset == True
+  when: isReset == True and inventory_hostname in groups["control_plane"]
 
 - name: Initialize Kubernetes Cluster
   shell: "kubeadm init --pod-network-cidr={{ cluster.pod-network-cidr }}"
   register: initCluster
+  when: inventory_hostname in groups["control_plane"]
 
 - name: Create Kubernetes config directory
   file:
     path: "~/.kube/"
     state: directory
+  when: inventory_hostname in groups["control_plane"]
 
 - name: Copy admin.conf to K8S config directory
   shell: cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  when: inventory_hostname in groups["control_plane"]
 
 - name: Set permissions on K8s config directory
   shell: chown $(id -u):$(id -g) $HOME/.kube/config
+  when: inventory_hostname in groups["control_plane"]
 
 - name: Deploy Calico CNI
   shell: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/calico.yaml
+  when: inventory_hostname in groups["control_plane"]
