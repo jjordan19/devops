@@ -18,7 +18,7 @@
   when: inventory_hostname in groups["control_plane"]
 
 - name: Join to cluster if needed
-  shell: JoinCluster.stdout
+  shell: "{{ JoinCluster.stdout }}"
   when: inventory_hostname in groups["control_plane"]
 
 - name: Enable and check kubelet service
