@@ -19,7 +19,7 @@
 
 - name: Join to cluster if needed
   shell: "{{ JoinCluster.stdout }}"
-  when: inventory_hostname in groups["control_plane"]
+  when: inventory_hostname in groups["nodes"]
 
 - name: Enable and check kubelet service
   systemd:
