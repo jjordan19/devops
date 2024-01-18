@@ -17,9 +17,13 @@
     state: present
   become: True
 
+- name: Check if jenkins service exist
+  shell: firewall-cmd --get-services | grep jenkins
+  register: jenkinsService
+
 - name: Add Firewall Service
   shell: firewall-cmd --permanent --new-service=jenkins
-  run_once: True
+  when: "{{ jenkinsService.stdout != 'jenkins' }}"
 
 - name: Add Firewalld Port Rule
   shell: firewall-cmd --permanent --add-port=8080/tcp
