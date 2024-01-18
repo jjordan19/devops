@@ -14,13 +14,12 @@
 
 - name: Cluster Join Command
   shell: kubeadm token create --print-join-command
-  register: JoinCluster
-  when: inventory_hostname in groups["control_plane"]
+  register: kubeadm_token
+  delegate_to: "{{ groups['control_plane'][0] }}"
 
-- name: Join to cluster if needed
-  shell: "{{ JoinCluster.stdout }}"
-  when: inventory_hostname in groups["nodes"]
-  become: True
+- name: Join node to cluster
+  shell: "{{ kubeadm_token.stdout }}"
+  when: inventory_hostname in groups["nodes"] and kubelet_conf.stat.exists == False
 
 - name: Enable and check kubelet service
   systemd:
