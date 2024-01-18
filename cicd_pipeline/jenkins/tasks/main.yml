@@ -1,2 +1,49 @@
 ---
 # tasks file for jenkins
+- name: Install Jenkins Repo
+  shell: wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+
+- name: Install Jenkins Key
+  shell: rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+
+- name: Install Jenkins
+  yum:
+    name: 
+      - jenkins
+      - fontconfig 
+      - java-17-openjdk
+      - git
+      - python3-pip
+    state: present
+
+- name: Add Firewall Service
+  shell: firewall-cmd --permanent --new-service=jenkins
+
+- name: Add Firewalld Port Rule
+  shell: firewall-cmd --permanent --add-port=8080/tcp
+
+- name: Add Firewalld Service
+  shell: firewall-cmd --permanent --add-service=jenkins
+
+- name: Add Firewalld Rule
+  shell: firewall-cmd --permanent --zone=public --add-service=http
+
+- name: Reload firewall
+  shell: firewall-cmd --reload
+
+# Change password
+- name: Grab initial password
+  slurp:
+    src: /var/lib/jenkins/secrets/initialAdminPassword
+  register: jenkinsPass
+
+- name: Print initial admin password
+  debug:
+    var: "{{ jenkinsPass.content | b64decode }}"
+
+- name: Restart Jenkins
+  systemd:
+    name: jenkins
+    enabled: True
+    daemon_reload: True
+    state: restarted
