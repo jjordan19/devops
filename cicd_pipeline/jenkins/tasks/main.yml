@@ -19,6 +19,7 @@
 
 - name: Add Firewall Service
   shell: firewall-cmd --permanent --new-service=jenkins
+  run_once: True
 
 - name: Add Firewalld Port Rule
   shell: firewall-cmd --permanent --add-port=8080/tcp
