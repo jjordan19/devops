@@ -1,6 +1,6 @@
 ---
 - hosts: 
-  - localhost
+  - jenkins
   any_errors_fatal: True
   tasks:
     - ansible.builtin.include_role:
