@@ -2,7 +2,7 @@
 
 ### System Requirements
 
-- Python
+- Python3
 - Ansible
 - AWS account
 
