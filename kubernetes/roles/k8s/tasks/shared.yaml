@@ -2,11 +2,17 @@
   yum_repository:
     name: kubernetes
     description: kubernetes
-    baseurl: 'https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch'
+    baseurl: 'https://pkgs.k8s.io/core:/stable:/v1.28/rpm/'
     enabled: True
     gpgcheck: True
     repo_gpgcheck: True
-    gpgkey: 'https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg'
+    gpgkey: 'https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key'
+    exclude: 
+      - kubelet 
+      - kubeadm 
+      - kubectl
+      - cri-tools 
+      - kubernetes-cni
   become: True
 
 - name: Install Kubernetes
@@ -14,6 +20,7 @@
     name:
       - kubeadm
     state: latest
+    disable_excludes: kubernetes
 
 - name: Disable system swap for Kubernetes
   shell: swapoff -a
