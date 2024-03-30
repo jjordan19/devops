@@ -5,6 +5,7 @@
     name:
       - https://downloads.percona.com/downloads/percona-server-mongodb-6.0/percona-server-mongodb-6.0.14-11/binary/redhat/9/aarch64/percona-mongodb-mongosh-2.1.5.el9.aarch64.rpm
       - https://downloads.percona.com/downloads/percona-server-mongodb-6.0/percona-server-mongodb-6.0.14-11/binary/redhat/9/aarch64/percona-server-mongodb-server-6.0.14-11.el9.aarch64.rpm
+    disable_gpg_check: True
 
 - name: Add MongoS User and Group
   user:
