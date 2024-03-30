@@ -1,0 +1,8 @@
+---
+- hosts: 
+  - mongo_database
+  any_errors_fatal: True
+  become: True
+  tasks:
+    - ansible.builtin.include_role:
+        name: mongodb

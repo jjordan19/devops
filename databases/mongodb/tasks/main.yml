@@ -1,2 +1,12 @@
 ---
 # tasks file for mongodb
+- name: MongoDB - MongoD
+  include_role:
+    name: mongodb/mongod
+  when: inventory_hostname != 'router'
+
+- name: MongoDB - MongoS
+  include_role:
+    name: mongodb/mongos
+  when: inventory_hostname == 'router'
+
