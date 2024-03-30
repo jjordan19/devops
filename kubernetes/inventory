@@ -1,6 +1,6 @@
 [control_plane]
-  10.211.55.6
+  10.211.55.6 ansible_ssh_private_key_file=~/.ssh/k8s_cluster.pem
 
 [nodes]
-  10.211.55.8    
-  10.211.55.9
+node1 10.211.55.8 ansible_ssh_private_key_file=~/.ssh/k8s_cluster.pem   
+node2 10.211.55.9 ansible_ssh_private_key_file=~/.ssh/k8s_cluster.pem
