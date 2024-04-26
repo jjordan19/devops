@@ -3,6 +3,8 @@
   - mongo_database
   any_errors_fatal: True
   become: True
+  vars:
+    - initCluster: True
   tasks:
     - ansible.builtin.include_role:
         name: mongodb

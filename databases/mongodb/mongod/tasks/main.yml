@@ -10,3 +10,6 @@
 - name: Add MongoS User and Group
   user:
     name: mongod
+
+- include_tasks: configure-cfgsvr.yaml
+  when: initCluster == True and inventory_hostname == config

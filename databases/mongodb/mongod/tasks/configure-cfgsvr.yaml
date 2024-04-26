@@ -1,0 +1,22 @@
+- name: Check if directory exists
+  stat:
+    path: /data/configdb
+  register: dir_status
+
+- name: Create directory if it doesn't exist
+  file:
+    path: /data/configdb
+    state: directory
+  when: not dir_status.stat.exists
+
+- name: Add MongoDB port to firewalld
+  firewalld:
+    port: 27019/tcp
+    permanent: yes
+    state: enabled
+
+- name: Reload firewalld
+  service:
+    name: firewalld
+    state: reloaded
+
