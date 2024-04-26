@@ -4,7 +4,11 @@
 
 # Where and how to store data.
 storage:
-  dbPath: /var/lib/mongo
+{% if inventory_hostname in groups["cfgsvrs"] %}
+  dbPath: /data/configdb
+{% else %}
+  dbPath: /data/serverdb
+{% endif %}
   journal:
     enabled: true
 #  engine: wiredTiger
