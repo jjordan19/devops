@@ -3,10 +3,10 @@
 - name: MongoDB - MongoD
   include_role:
     name: mongodb/mongod
-  when: inventory_hostname != 'router'
+  when: inventory_hostname not in groups["routers"]
 
 - name: MongoDB - MongoS
   include_role:
     name: mongodb/mongos
-  when: inventory_hostname == 'router'
+  when: inventory_hostname in groups["routers"]
 

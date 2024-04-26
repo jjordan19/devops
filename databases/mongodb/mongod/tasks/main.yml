@@ -12,4 +12,4 @@
     name: mongod
 
 - include_tasks: configure-cfgsvr.yaml
-  when: initCluster == True and inventory_hostname == config
+  when: initCluster == True and inventory_hostname in groups["cfgsvrs"]
