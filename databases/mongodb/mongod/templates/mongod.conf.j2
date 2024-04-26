@@ -67,12 +67,13 @@ net:
 {% if inventory_hostname in groups["cfgsvrs"] %}
 sharding:
    clusterRole: configsvr
-#replication:
+replication:
+  replSetName: cfgReplSet
 {% else %}
 sharding:
    clusterRole: shardsvr
 replication:
-  replSetName: {{ inventory_hostname }}
+  replSetName: rs0
 {% endif %}
 
 ## Enterprise-Only Options:
