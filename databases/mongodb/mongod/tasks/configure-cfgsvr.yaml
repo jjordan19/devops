@@ -7,6 +7,8 @@
   file:
     path: /data/configdb
     state: directory
+    owner: mongod
+    group: mongod
   when: not dir_status.stat.exists
 
 - name: Add MongoDB port to firewalld
