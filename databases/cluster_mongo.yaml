@@ -1,6 +1,8 @@
 ---
 - hosts: 
-  - mongo_database
+  - routers
+  - cfgsvrs
+  - shards
   any_errors_fatal: True
   become: True
   vars:
