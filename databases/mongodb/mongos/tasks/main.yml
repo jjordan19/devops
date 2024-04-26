@@ -1,0 +1,11 @@
+---
+# tasks file for mongos
+- name: Install MongoDB
+  yum:
+    name:
+      - https://downloads.percona.com/downloads/percona-server-mongodb-6.0/percona-server-mongodb-6.0.14-11/binary/redhat/9/aarch64/percona-mongodb-mongosh-2.1.5.el9.aarch64.rpm
+      - https://downloads.percona.com/downloads/percona-server-mongodb-6.0/percona-server-mongodb-6.0.14-11/binary/redhat/9/aarch64/percona-server-mongodb-mongos-6.0.14-11.el9.aarch64.rpm
+
+- name: Add MongoS User and Group
+  user:
+    name: mongos
