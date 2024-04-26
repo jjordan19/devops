@@ -22,3 +22,7 @@
     name: firewalld
     state: reloaded
 
+- name: Copy template file
+  template:
+    src: mongod.conf.j2  # Path to your Jinja2 template file
+    dest: /etc/mongod.conf
