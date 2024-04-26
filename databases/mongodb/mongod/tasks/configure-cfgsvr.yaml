@@ -26,3 +26,5 @@
   template:
     src: mongod.conf.j2  # Path to your Jinja2 template file
     dest: /etc/mongod.conf
+    owner: mongod
+    group: mongod
