@@ -18,9 +18,12 @@ LimitNPROC=64000
 Environment="OPTIONS=-f /etc/mongod.conf"
 EnvironmentFile=-/etc/sysconfig/mongod
 #ExecStartPre=/usr/bin/percona-server-mongodb-helper.sh
+ExecStartPre=/usr/bin/mkdir -p /var/run/mongodb
+ExecStartPre=/usr/bin/chown mongod:mongod /var/run/mongodb
+ExecStartPre=/usr/bin/chmod 0755 /var/run/mongodb
 ExecStart=/usr/bin/mongod $OPTIONS
 #ExecStart=/usr/bin/env bash -c "${NUMACTL} /usr/bin/mongod ${OPTIONS} > ${STDOUT} 2> ${STDERR}"
-PIDFile=/var/run/mongod.pid
+PIDFile=/var/run/mongodb/mongod.pid
 
 [Install]
 WantedBy=multi-user.target
