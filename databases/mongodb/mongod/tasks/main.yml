@@ -26,10 +26,10 @@
     group: mongod
 
 - include_tasks: configure-cfgsvr.yaml
-  when: initCluster == True and inventory_hostname in groups["cfgsvrs"]
+  when: inventory_hostname in groups["cfgsvrs"]
 
 - include_tasks: configure-shardsvr.yaml
-  when: initCluster == True and inventory_hostname in groups["shards"]
+  when: inventory_hostname in groups["shards"]
 
 - name: SystemD - Start MongoDB now and at boot
   systemd:
