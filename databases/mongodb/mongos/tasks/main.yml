@@ -34,6 +34,17 @@
     serole: object_r
     state: touch
 
+- name: Add mongos port to firewalld
+  firewalld:
+    port: 27017/tcp
+    permanent: yes
+    state: enabled
+
+- name: Reload firewalld
+  service:
+    name: firewalld
+    state: reloaded
+
 - name: SystemD - Restart Mongos
   systemd:
     name: mongos
