@@ -11,5 +11,12 @@
   user:
     name: mongod
 
+- name: Install MongoD SystemD Service
+  copy:
+    dest: /usr/lib/systemd/system/mongod.service
+    src: mongod.service
+    owner: root
+    group: root
+    
 - include_tasks: configure-cfgsvr.yaml
   when: initCluster == True and inventory_hostname in groups["cfgsvrs"]
