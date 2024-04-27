@@ -1,11 +1,11 @@
 - name: Check if directory exists
   stat:
-    path: /data/configdb
+    path: /data/serverdb
   register: dir_status
 
 - name: Create directory if it doesn't exist
   file:
-    path: /data/configdb
+    path: /data/serverdb
     state: directory
     owner: mongod
     group: mongod
@@ -13,7 +13,7 @@
 
 - name: Add MongoDB port to firewalld
   firewalld:
-    port: 27019/tcp
+    port: 27018/tcp
     permanent: yes
     state: enabled
 
@@ -21,4 +21,3 @@
   service:
     name: firewalld
     state: reloaded
-

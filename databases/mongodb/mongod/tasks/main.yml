@@ -17,6 +17,23 @@
     src: mongod.service
     owner: root
     group: root
-    
+
+- name: Copy template file
+  template:
+    src: mongod.conf.j2  # Path to your Jinja2 template file
+    dest: /etc/mongod.conf
+    owner: mongod
+    group: mongod
+
 - include_tasks: configure-cfgsvr.yaml
   when: initCluster == True and inventory_hostname in groups["cfgsvrs"]
+
+- include_tasks: configure-shardsvr.yaml
+  when: initCluster == True and inventory_hostname in groups["shards"]
+
+- name: SystemD - Start MongoDB now and at boot
+  systemd:
+    name: mongod
+    enabled: True
+    state: restarted
+    daemon_reload: True
