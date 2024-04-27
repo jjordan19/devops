@@ -25,6 +25,16 @@
     owner: mongod
     group: mongod
 
+- name: Create Directory File
+  file:
+    path: /var/log/mongodb
+    owner: mongod
+    group: mongod
+    setype: mongod_log_t
+    seuser: system_u
+    serole: object_r
+    state: directory
+
 - include_tasks: configure-cfgsvr.yaml
   when: inventory_hostname in groups["cfgsvrs"]
 
