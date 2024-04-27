@@ -14,6 +14,7 @@ Each organized folder serves as a comprehensive deep dive into various DevOps to
 - Kubernetes
 - CICD
 - Terraform
+- Databases (MongoDB)
 
 This directory becomes a valuable resource for fostering skill development and provides a hands-on environment to experiment, explore, and grasp different technologies.
 
