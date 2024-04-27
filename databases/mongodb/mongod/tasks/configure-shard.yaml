@@ -11,6 +11,9 @@
     group: mongod
   when: not dir_status.stat.exists
 
+- name: Set permissions on data directory
+  shell: chcon -R system_u:object_r:mongod_var_lib_t:s0 /data/serverdb
+
 - name: Add MongoDB port to firewalld
   firewalld:
     port: 27018/tcp
