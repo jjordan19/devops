@@ -9,3 +9,34 @@
 - name: Add MongoS User and Group
   user:
     name: mongos
+
+- name: Install MongoD SystemD Service
+  copy:
+    dest: /usr/lib/systemd/system/mongos.service
+    src: mongos.service
+    owner: root
+    group: root
+
+- name: Copy mongos conf file
+  template:
+    src: mongos.conf.j2  
+    dest: /etc/mongos.conf
+    owner: mongos
+    group: mongos
+
+- name: Create mongos log file
+  file:
+    path: /var/log/mongos.log
+    owner: mongos
+    group: mongos
+    setype: mongod_log_t
+    seuser: system_u
+    serole: object_r
+    state: touch
+
+- name: SystemD - Restart Mongos
+  systemd:
+    name: mongos
+    enabled: True
+    state: restarted
+    daemon_reload: True

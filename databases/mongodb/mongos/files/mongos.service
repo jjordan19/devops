@@ -1,0 +1,33 @@
+[Unit]
+Description=MongoDB Shard Router
+After=network.target
+Documentation=https://docs.mongodb.org/manual
+
+[Service]
+Type=forking
+RestartSec=1ms
+Restart=always
+User=mongos
+Group=mongos
+ExecStart=/usr/bin/mongos -f /etc/mongos.conf
+# file size
+LimitFSIZE=infinity
+# cpu time
+LimitCPU=infinity
+# virtual memory size
+LimitAS=infinity
+# open files
+LimitNOFILE=infinity
+# processes/threads
+LimitNPROC=infinity
+# locked memory
+LimitMEMLOCK=infinity
+# total threads (user+kernel)
+TasksMax=infinity
+TasksAccounting=false
+
+# Recommended limits for for mongod as specified in
+# http://docs.mongodb.org/manual/reference/ulimit/#recommended-settings
+
+[Install]
+WantedBy=multi-user.target
