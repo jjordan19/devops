@@ -20,7 +20,7 @@
 
 - name: Copy template file
   template:
-    src: mongod.conf.j2  # Path to your Jinja2 template file
+    src: mongod.conf.j2  
     dest: /etc/mongod.conf
     owner: mongod
     group: mongod
