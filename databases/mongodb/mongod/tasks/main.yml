@@ -25,7 +25,7 @@
     owner: mongod
     group: mongod
 
-- name: Create Directory File
+- name: Mongo Logging Permission
   file:
     path: /var/log/mongodb
     owner: mongod
