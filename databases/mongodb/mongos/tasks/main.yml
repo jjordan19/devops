@@ -10,6 +10,9 @@
   user:
     name: mongos
 
+- name: Permission for PID File 
+  shell: mkdir -p /var/run/mongodb ; chown mongos:mongos /var/run/mongodb
+
 - name: Install MongoD SystemD Service
   copy:
     dest: /usr/lib/systemd/system/mongos.service
@@ -33,6 +36,16 @@
     seuser: system_u
     serole: object_r
     state: touch
+
+- name: Mongo Logging Permission
+  file:
+    path: /var/log/mongos.diagnostic.data
+    owner: mongos
+    group: mongos
+    setype: mongod_log_t
+    seuser: system_u
+    serole: object_r
+    state: directory
 
 - name: Add mongos port to firewalld
   firewalld:

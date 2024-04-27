@@ -9,9 +9,6 @@ RestartSec=1ms
 Restart=always
 User=mongos
 Group=mongos
-ExecStartPre=/usr/bin/mkdir -p /var/run/mongodb
-ExecStartPre=/usr/bin/chown mongos:mongos /var/run/mongodb
-ExecStartPre=/usr/bin/chmod 0755 /var/run/mongodb
 ExecStart=/usr/bin/mongos -f /etc/mongos.conf
 PIDFile=/var/run/mongodb/mongos.pid
 # file size
