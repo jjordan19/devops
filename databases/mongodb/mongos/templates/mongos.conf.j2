@@ -2,8 +2,14 @@ systemLog:
   destination: file
   logAppend: true
   path: /var/log/mongos.log
+
+processManagement:
+  fork: true
+  pidFilePath: /var/run/mongodb/mongos.pid
+
 sharding:
   configDB: cfg/mongo-cfgsvr-0:27019
+
 net:
   bindIp: "*"
   port: 27017
