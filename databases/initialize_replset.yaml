@@ -1,0 +1,31 @@
+---
+- hosts: 
+  - routers
+  - cfgsvrs
+  - shards
+  any_errors_fatal: True
+  become: True
+  tasks:
+    - name: Initialize Config ReplSet
+      shell: >-
+        mongo --port 27019 --quiet --eval 'rs.initiate( { _id: "cfg", configsvr: true, members: [ { _id: 0, host: "mongo-cfgsvr-0:27019" }] } )'
+      when: inventory_hostname == "mongo-cfgsvr-0"
+      run_once: True
+
+    - name: Initialize Shard ReplSet
+      shell: >-
+        mongo --port 27018 --quiet --eval 'rs.initiate({ _id : "rs0", members: [ { _id : 0, host : "mongo-rs0-1:27018" } ]} )'
+      when: inventory_hostname == "mongo-rs0-1"
+      run_once: True
+
+    - name: Add Shard and Arbiter
+      shell: >-
+        mongo --port 27018 --quiet --eval 'rs.add("mongo-rs0-2:27018") ; rs.addArb("mongo-rs0-arb:27018")'
+      when: inventory_hostname == "mongo-rs0-1"
+      run_once: True
+
+    - name: Add Shard and Arbiter
+      shell: >-
+        mongo --port 27017 --quiet --eval 'sh.addShard("rs0/mongo-rs0-1:27018,mongo-rs0-2:27018,mongo-rs0-arb:27018")'
+      when: inventory_hostname == "mongo-router-0"
+      run_once: True
