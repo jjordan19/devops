@@ -1,3 +1,7 @@
+systemLog:
+  destination: syslog
+  logAppend: true
+  path: /var/log/mongos.log
 sharding:
   configDB: cfg/mongo-cfgsvr-0:27019
 net:
