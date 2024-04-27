@@ -28,7 +28,7 @@
 - include_tasks: configure-cfgsvr.yaml
   when: inventory_hostname in groups["cfgsvrs"]
 
-- include_tasks: configure-shardsvr.yaml
+- include_tasks: configure-shard.yaml
   when: inventory_hostname in groups["shards"]
 
 - name: SystemD - Start MongoDB now and at boot
